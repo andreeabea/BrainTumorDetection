@@ -7,18 +7,17 @@ import os
 # and shuffle them
 import config
 
-imagePaths = list(paths.list_images(config.ORIG_INPUT_DATASET))
+imagePaths = list(paths.list_images(config.AUG_DATASET))
 random.seed(42)
 random.shuffle(imagePaths)
 
 # compute the training and testing split
 i = int(len(imagePaths) * config.TRAIN_SPLIT)
 trainPaths = imagePaths[:i]
-testPaths = imagePaths[i:]
 # we'll be using part of the training data for validation
-i = int(len(trainPaths) * config.VAL_SPLIT)
-valPaths = trainPaths[:i]
-trainPaths = trainPaths[i:]
+valid = int(len(imagePaths) * config.VAL_SPLIT)
+valPaths = imagePaths[i:i+valid]
+testPaths = imagePaths[i+valid:]
 
 # define the datasets that we'll be building
 datasets = [

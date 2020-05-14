@@ -1,34 +1,22 @@
 import tensorflow as tf
 from imutils import paths
-from keras.preprocessing.image import ImageDataGenerator
-from keras_applications.imagenet_utils import decode_predictions
 
 import config
 import cv2
 import numpy as np
 
-new_model = tf.keras.models.load_model('models/DenseNet6')
+from init import testGen
+
+new_model = tf.keras.models.load_model('models/DenseNet80')
 
 # Check its architecture
 new_model.summary()
-
-valAug = ImageDataGenerator(rescale=1 / 255.0)
-
-BS = 32
-
-testGen = valAug.flow_from_directory(
-    config.TEST_PATH,
-    class_mode="categorical",
-    target_size=(75, 75),
-    color_mode="rgb",
-    shuffle=False,
-    batch_size=BS)
 
 # Evaluate the restored model
 loss, acc = new_model.evaluate(testGen, verbose=2)
 print('Restored model, accuracy: {:5.2f}%'.format(100 * acc))
 
-images = list(paths.list_images(config.TEST_PATH+"/no"))
+images = list(paths.list_images(config.TEST_PATH))
 
 imgs = []
 

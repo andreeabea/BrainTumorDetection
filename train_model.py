@@ -1,30 +1,20 @@
-# set the matplotlib backend so figures can be saved in the background
-import matplotlib
-matplotlib.use("Agg")
-# import the necessary packages
-from keras.preprocessing.image import ImageDataGenerator
-from keras.callbacks import LearningRateScheduler
-from keras.optimizers import SGD
-from sklearn.metrics import classification_report
+from datetime import datetime
+
 from imutils import paths
-import matplotlib.pyplot as plt
+from keras import applications, Model, Sequential
+from keras.layers import GlobalAveragePooling2D, Dropout, Dense, Conv2D, BatchNormalization, MaxPooling2D
+
+from keras.regularizers import l2
+
+from keras.callbacks import LearningRateScheduler, EarlyStopping, History
+from keras.optimizers import SGD, Adam
+from sklearn.metrics import classification_report
 import numpy as np
-import argparse
-from resnet import ResNet
-import config
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--plot", type=str, default="plot.png",
-    help="path to output loss/accuracy plot")
-args = vars(ap.parse_args())
+from init import NUM_EPOCHS, INIT_LR, valGen, BS, testGen, trainGen, totalTrain, totalVal, totalTest
+from plot_model import plot
 
-# define the total number of epochs to train for along with the
-# initial learning rate and batch size
-NUM_EPOCHS = 50
-INIT_LR = 1e-1
-BS = 32
-
+import tensorflow as tf
 
 def poly_decay(epoch):
     # initialize the maximum number of epochs, base learning rate,
@@ -37,97 +27,71 @@ def poly_decay(epoch):
     # return the new learning rate
     return alpha
 
+def lr_scheduler(epoch, lr):
+    decay_rate = 0.85
+    decay_step = 1
+    if epoch % decay_step == 0 and epoch:
+        return lr * pow(decay_rate, np.floor(epoch / decay_step))
+    return lr
 
-# determine the total number of image paths in training, validation,
-# and testing directories
-totalTrain = len(list(paths.list_images(config.TRAIN_PATH)))
-totalVal = len(list(paths.list_images(config.VAL_PATH)))
-totalTest = len(list(paths.list_images(config.TEST_PATH)))
+#densenet 201
+base_model = applications.DenseNet201(weights='imagenet', include_top=False, input_shape=[75, 75, 3])
 
 
-# initialize the training training data augmentation object
-trainAug = ImageDataGenerator(
-	rescale=1 / 255.0,
-	rotation_range=20,
-	zoom_range=0.05,
-	width_shift_range=0.05,
-	height_shift_range=0.05,
-	shear_range=0.05,
-	horizontal_flip=True,
-	fill_mode="nearest")
-# initialize the validation (and testing) data augmentation object
-valAug = ImageDataGenerator(rescale=1 / 255.0)
+for layer in base_model.layers:
+    layer.trainable = False
 
-# initialize the training generator
-trainGen = trainAug.flow_from_directory(
-	config.TRAIN_PATH,
-	class_mode="categorical",
-	target_size=(64, 64),
-	color_mode="rgb",
-	shuffle=True,
-	batch_size=BS)
-# initialize the validation generator
-valGen = valAug.flow_from_directory(
-	config.VAL_PATH,
-	class_mode="categorical",
-	target_size=(64, 64),
-	color_mode="rgb",
-	shuffle=False,
-	batch_size=BS)
-# initialize the testing generator
-testGen = valAug.flow_from_directory(
-	config.TEST_PATH,
-	class_mode="categorical",
-	target_size=(64, 64),
-	color_mode="rgb",
-	shuffle=False,
-	batch_size=BS)
+for layer in base_model.layers[round(len(base_model.layers)*60/100):]:
+    layer.trainable = True
 
-# initialize our ResNet model and compile it
-# 64x64 images with 3 channels (RGB), 2 classes
-# ResNet will perform (3,4,6) -ex: 3 sets of residual models- stacking with (64,128,256,512) -filters- convolutional layers
-model = ResNet.build(64, 64, 3, 2, (3, 4, 6),
-	(64, 128, 256, 512), reg=0.0005)
-opt = SGD(lr=INIT_LR, momentum=0.9)
-model.compile(loss="binary_crossentropy", optimizer=opt,
-	metrics=["accuracy"])
+model = Sequential()
+model.add(base_model)
+#activation="sigmoid"?
+model.add(Conv2D(64, (2, 2), padding="valid"))
+#model.add(MaxPooling2D())
+#model.add(Dropout(0.5))
+#model.add(Dense(2, activation='relu', kernel_regularizer=l2(0.03)))
+#model.add(BatchNormalization())
 
-# define our set of callbacks and fit the model
-callbacks = [LearningRateScheduler(poly_decay)]
+#model.add(Conv2D(2, (1, 1), padding="valid"))
+model.add(GlobalAveragePooling2D())
+model.add(Dropout(0.5))
+model.add(Dense(2, activation="softmax", kernel_regularizer=l2(0.1)))
+#sigmoid?
+
+opt = Adam(lr=INIT_LR)#, decay=INIT_LR / (NUM_EPOCHS * 0.5))
+model.compile(loss="binary_crossentropy", optimizer=opt, metrics=["accuracy"])
+
+# define our set of callbacks and fit the model; mode =min
+earlystopping = EarlyStopping(monitor='val_loss', verbose=1, patience=3)#, restore_best_weights=True)
+#patience 2?
+history = History()
+# callbacks = [LearningRateScheduler(poly_decay), earlystopping, history]
+#log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+#tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+callbacks = [history,earlystopping]
+#callbacks=[LearningRateScheduler(lr_scheduler, verbose=1)]#, earlystopping]
 H = model.fit_generator(
-	trainGen,
-	steps_per_epoch=totalTrain // BS,
-	validation_data=valGen,
-	validation_steps=totalVal // BS,
-	epochs=NUM_EPOCHS,
-	callbacks=callbacks)
+    trainGen,
+    steps_per_epoch=totalTrain // BS,
+    validation_data=valGen,
+    validation_steps=totalVal // BS,
+    epochs=NUM_EPOCHS,
+    callbacks=callbacks)
 
-model.save(filepath="models/firstTry")
+model.save(filepath="models/DenseNetNew2")
 
 # reset the testing generator and then use our trained model to
 # make predictions on the data
 print("[INFO] evaluating network...")
 testGen.reset()
-predIdxs = model.predict_generator(testGen,
-	steps=(totalTest // BS) + 1)
+predIdxs = model.predict_generator(testGen, steps=(totalTest // BS) + 1)
 
 # for each image in the testing set we need to find the index of the
 # label with corresponding largest predicted probability
 predIdxs = np.argmax(predIdxs, axis=1)
 # show a nicely formatted classification report
-print(classification_report(testGen.classes, predIdxs,
-	target_names=testGen.class_indices.keys()))
+print(classification_report(testGen.classes, predIdxs, target_names=testGen.class_indices.keys()))
 
-# plot the training loss and accuracy
-N = NUM_EPOCHS
-plt.style.use("ggplot")
-plt.figure()
-plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
-plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
-plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
-plt.title("Training Loss and Accuracy on Dataset")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss/Accuracy")
-plt.legend(loc="lower left")
-plt.savefig(args["plot"])
+plot(history, H)
+
