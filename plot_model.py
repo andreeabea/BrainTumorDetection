@@ -8,8 +8,8 @@ import numpy as np
 matplotlib.use("Agg")
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--plot", type=str, default="plots/plotnew1.png", help="path to output loss/accuracy plot")
-ap.add_argument("-p2", "--plot2", type=str, default="plots/plotnew2.png", help="path to output loss/accuracy plot")
+ap.add_argument("-p", "--plot", type=str, default="plots/plot3.png", help="path to output loss/accuracy plot")
+ap.add_argument("-p2", "--plot2", type=str, default="plots/plot4.png", help="path to output loss/accuracy plot")
 args = vars(ap.parse_args())
 
 

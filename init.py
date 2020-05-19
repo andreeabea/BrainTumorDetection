@@ -1,7 +1,7 @@
 
 # initialize the training data augmentation object
 from imutils import paths
-from keras_preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 import config
 
@@ -9,7 +9,7 @@ import config
 # initial learning rate and batch size
 NUM_EPOCHS = 100
 INIT_LR = 1e-3
-BS = 32
+BS = 64
 
 trainAug = ImageDataGenerator(
     rescale=1 / 255.0,

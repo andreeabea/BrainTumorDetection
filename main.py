@@ -8,7 +8,10 @@ import numpy as np
 
 from init import testGen, totalTest, BS
 
-new_model = tf.keras.models.load_model('models/DenseNet80')
+from tensorflow.keras.models import load_model
+
+new_model = load_model('models/BestModel')
+new_model.build((None, 75, 75, 3))
 
 # Check its architecture
 new_model.summary()
