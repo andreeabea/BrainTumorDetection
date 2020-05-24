@@ -1,22 +1,30 @@
-import tensorflow as tf
+import unicodedata
+
+import easygui as easygui
+
 from imutils import paths
+from sklearn import metrics
 from sklearn.metrics import classification_report
 
+import augment_dataset
 import config
 import cv2
 import numpy as np
 
-from init import testGen, totalTest, BS
+from init import testGen, totalTest, BS, trainGen
 
 from tensorflow.keras.models import load_model
 
-new_model = load_model('models/BestModel')
+from plot_model import plotConfusionMatrix
+
+new_model = load_model('models/CrossValidationModel')
 new_model.build((None, 75, 75, 3))
 
-# Check its architecture
+# check model architecture
 new_model.summary()
 
-# Evaluate the restored model
+# evaluate the restored model
+print("Evaluation on validation set:")
 loss, acc = new_model.evaluate(testGen, verbose=2)
 print('Restored model, accuracy: {:5.2f}%'.format(100 * acc))
 
@@ -30,27 +38,52 @@ predIdxs = np.argmax(predIdxs, axis=1)
 # show a nicely formatted classification report
 print(classification_report(testGen.classes, predIdxs, target_names=testGen.class_indices.keys()))
 
+# plotConfusionMatrix(testGen, predIdxs)
+
 images = list(paths.list_images(config.TEST_PATH))
 
 imgs = []
 
 for image in images:
     img = cv2.imread(image)
-    #cv2.imshow("LOL", img)
     img = cv2.resize(img, (75, 75))
-    #img = np.reshape(img, [64, 64, 3])
     imgs.append(img)
 
 imgs = np.array(imgs)
 imgs = imgs/255
 predictions = new_model.predict(imgs)
 
-for i in range(0, len(imgs)):
-    img = cv2.imread(images[i])
+uni_img = easygui.fileopenbox()
+
+while uni_img:
+    img_path = unicodedata.normalize('NFKD', uni_img).encode('ascii', 'ignore')
+    img_path = img_path.decode('utf-8')
+
+    img = cv2.imread(img_path)
+
     cv2.imshow("Brain MRI image", img)
-    #print(predictions[i])
-    if predictions[i][0] < predictions[i][1]:
+    cv2.waitKey()
+
+    # augment image
+    preprocessedImg = augment_dataset.extractBrain(img)
+
+    cv2.imshow("Augmented image", preprocessedImg)
+    cv2.waitKey()
+
+    preprocessedImg = cv2.resize(preprocessedImg, (75, 75))
+    imgs = []
+    imgs.append(preprocessedImg)
+    imgs = np.array(imgs)
+    imgs = imgs / 255
+    predictions = new_model.predict(imgs)
+
+#for i in range(0, len(imgs)):
+    print(predictions[0])
+    if predictions[0][0] < predictions[0][1]:
         print("yes")
     else:
         print("no")
-    cv2.waitKey()
+
+    uni_img = easygui.fileopenbox()
+
+

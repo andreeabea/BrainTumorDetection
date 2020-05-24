@@ -20,8 +20,20 @@ trainAug = ImageDataGenerator(
     shear_range=0.05,
     horizontal_flip=True,
     fill_mode="nearest")
+
+trainAug2 = ImageDataGenerator(
+    rotation_range=20,
+    zoom_range=0.05,
+    width_shift_range=0.05,
+    height_shift_range=0.05,
+    shear_range=0.05,
+    horizontal_flip=True,
+    fill_mode="nearest")
+
 # initialize the validation (and testing) data augmentation object
 valAug = ImageDataGenerator(rescale=1 / 255.0)
+
+valAug2 = ImageDataGenerator()
 
 # initialize the training generator
 trainGen = trainAug.flow_from_directory(

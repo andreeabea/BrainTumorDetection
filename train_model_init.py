@@ -1,3 +1,7 @@
+"""
+ Source code : https://www.pyimagesearch.com/
+ This was the first architecture I have tried.
+"""
 # set the matplotlib backend so figures can be saved in the background
 import matplotlib
 matplotlib.use("Agg")

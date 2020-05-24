@@ -17,6 +17,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, History, TensorBoard
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 
+
 def poly_decay(epoch):
     # initialize the maximum number of epochs, base learning rate,
     # and power of the polynomial
@@ -37,7 +38,6 @@ def lr_scheduler(epoch, lr):
     return lr
 
 
-#densenet 201
 base_model = DenseNet201(weights='imagenet', include_top=False, input_shape=[75, 75, 3])
 
 
@@ -49,7 +49,6 @@ for layer in base_model.layers[round(len(base_model.layers)*60/100):]:
 
 model = Sequential()
 model.add(base_model)
-#activation="sigmoid"?
 model.add(Conv2D(64, (2, 2), padding="valid", activation="sigmoid"))
 #model.add(MaxPooling2D())
 #model.add(Dropout(0.5))
@@ -60,14 +59,13 @@ model.add(Dropout(0.5))
 model.add(GlobalAveragePooling2D())
 #aici era la 80% model.add(Dropout(0.5))
 model.add(Dense(2, activation="softmax", kernel_regularizer=l2(0.1)))
-#sigmoid?
 
 opt = Adam(lr=INIT_LR)#, decay=INIT_LR / (NUM_EPOCHS * 0.5))
 model.compile(loss="binary_crossentropy", optimizer=opt, metrics=["accuracy"])
 
-# define our set of callbacks and fit the model; mode =min
+# define our set of callbacks and fit the model
 earlystopping = EarlyStopping(monitor='val_loss', verbose=1, mode='min', patience=3)#, restore_best_weights=True)
-save_best = ModelCheckpoint('models/BestModel', save_best_only=True, monitor='val_loss', mode='min')
+save_best = ModelCheckpoint('models/BestModel3', save_best_only=True, monitor='val_loss', mode='min')
 history = History()
 # callbacks = [LearningRateScheduler(poly_decay), earlystopping, history]
 
@@ -76,6 +74,7 @@ tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 callbacks = [history, tensorboard_callback, save_best, earlystopping]
 #callbacks=[LearningRateScheduler(lr_scheduler, verbose=1)]#, earlystopping]
+
 H = model.fit_generator(
     trainGen,
     steps_per_epoch=totalTrain // BS,

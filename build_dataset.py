@@ -11,10 +11,11 @@ imagePaths = list(paths.list_images(config.AUG_DATASET))
 random.seed(42)
 random.shuffle(imagePaths)
 
-# compute the training and testing split
+# compute the training split
 i = int(len(imagePaths) * config.TRAIN_SPLIT)
 trainPaths = imagePaths[:i]
-# we'll be using part of the training data for validation
+
+# obtain the validation and testing splits
 valid = int(len(imagePaths) * config.VAL_SPLIT)
 valPaths = imagePaths[i:i+valid]
 testPaths = imagePaths[i+valid:]
