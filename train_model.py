@@ -17,50 +17,47 @@ from tensorflow.keras.callbacks import ModelCheckpoint, History, TensorBoard
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 
-
-def poly_decay(epoch):
-    # initialize the maximum number of epochs, base learning rate,
-    # and power of the polynomial
-    maxEpochs = NUM_EPOCHS
-    baseLR = INIT_LR
-    power = 1.0
-    # compute the new learning rate based on polynomial decay
-    alpha = baseLR * (1 - (epoch / float(maxEpochs))) ** power
-    # return the new learning rate
-    return alpha
-
-
-def lr_scheduler(epoch, lr):
-    decay_rate = 0.85
-    decay_step = 1
-    if epoch % decay_step == 0 and epoch:
-        return lr * pow(decay_rate, np.floor(epoch / decay_step))
-    return lr
-
+"""
+    Initially used as a callback, without optimizer
+"""
+# def poly_decay(epoch):
+#     # initialize the maximum number of epochs, base learning rate,
+#     # and power of the polynomial
+#     maxEpochs = NUM_EPOCHS
+#     baseLR = INIT_LR
+#     power = 1.0
+#     # compute the new learning rate based on polynomial decay
+#     alpha = baseLR * (1 - (epoch / float(maxEpochs))) ** power
+#     # return the new learning rate
+#     return alpha
+#
+#
+# def lr_scheduler(epoch, lr):
+#     decay_rate = 0.85
+#     decay_step = 1
+#     if epoch % decay_step == 0 and epoch:
+#         return lr * pow(decay_rate, np.floor(epoch / decay_step))
+#     return lr
 
 base_model = DenseNet201(weights='imagenet', include_top=False, input_shape=[75, 75, 3])
 
-
+# set all layers to non-trainable; freeze them
 for layer in base_model.layers:
     layer.trainable = False
 
+# unfreeze 40% of them => 60% of the bottom layers freezed
 for layer in base_model.layers[round(len(base_model.layers)*60/100):]:
     layer.trainable = True
 
 model = Sequential()
 model.add(base_model)
 model.add(Conv2D(64, (2, 2), padding="valid", activation="sigmoid"))
-#model.add(MaxPooling2D())
-#model.add(Dropout(0.5))
-#model.add(Dense(2, activation='relu', kernel_regularizer=l2(0.03)))
-# sau asta model.add(BatchNormalization())
 model.add(Dropout(0.5))
-#model.add(Conv2D(2, (1, 1), padding="valid"))
 model.add(GlobalAveragePooling2D())
-#aici era la 80% model.add(Dropout(0.5))
 model.add(Dense(2, activation="softmax", kernel_regularizer=l2(0.1)))
 
-opt = Adam(lr=INIT_LR)#, decay=INIT_LR / (NUM_EPOCHS * 0.5))
+# used only with SGD optimizer initially: decay=INIT_LR / (NUM_EPOCHS * 0.5))
+opt = Adam(lr=INIT_LR)
 model.compile(loss="binary_crossentropy", optimizer=opt, metrics=["accuracy"])
 
 # define our set of callbacks and fit the model
@@ -82,8 +79,6 @@ H = model.fit_generator(
     validation_steps=totalVal // BS,
     epochs=NUM_EPOCHS,
     callbacks=callbacks)
-
-#model.save(filepath="models/DenseNetNew2")
 
 # reset the testing generator and then use our trained model to
 # make predictions on the data

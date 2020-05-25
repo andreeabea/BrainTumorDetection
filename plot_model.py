@@ -64,6 +64,7 @@ def plotConfusionMatrix(testGen, predIdxs):
     plt.savefig(args["confusionmatrix"])
 
 
+# function used for cross validation plots, i representing the ith training
 def plotFold(history, H, i):
     accArg = "cross" + str(i) + "1"
     lossArg = "cross" + str(i) + "2"

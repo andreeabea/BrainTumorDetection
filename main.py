@@ -3,7 +3,6 @@ import unicodedata
 import easygui as easygui
 
 from imutils import paths
-from sklearn import metrics
 from sklearn.metrics import classification_report
 
 import augment_dataset
@@ -17,7 +16,7 @@ from tensorflow.keras.models import load_model
 
 from plot_model import plotConfusionMatrix
 
-new_model = load_model('models/CrossValidationModel')
+new_model = load_model('models/BestModel')
 new_model.build((None, 75, 75, 3))
 
 # check model architecture
@@ -40,18 +39,21 @@ print(classification_report(testGen.classes, predIdxs, target_names=testGen.clas
 
 # plotConfusionMatrix(testGen, predIdxs)
 
-images = list(paths.list_images(config.TEST_PATH))
-
-imgs = []
-
-for image in images:
-    img = cv2.imread(image)
-    img = cv2.resize(img, (75, 75))
-    imgs.append(img)
-
-imgs = np.array(imgs)
-imgs = imgs/255
-predictions = new_model.predict(imgs)
+"""
+    Initial version. Making predictions on all test images.
+"""
+# images = list(paths.list_images(config.TEST_PATH))
+#
+# imgs = []
+#
+# for image in images:
+#     img = cv2.imread(image)
+#     img = cv2.resize(img, (75, 75))
+#     imgs.append(img)
+#
+# imgs = np.array(imgs)
+# imgs = imgs/255
+# predictions = new_model.predict(imgs)
 
 uni_img = easygui.fileopenbox()
 
@@ -59,15 +61,16 @@ while uni_img:
     img_path = unicodedata.normalize('NFKD', uni_img).encode('ascii', 'ignore')
     img_path = img_path.decode('utf-8')
 
+    # read input image from gui
     img = cv2.imread(img_path)
 
     cv2.imshow("Brain MRI image", img)
     cv2.waitKey()
 
-    # augment image
+    # preprocess input image
     preprocessedImg = augment_dataset.extractBrain(img)
 
-    cv2.imshow("Augmented image", preprocessedImg)
+    cv2.imshow("Preprocessed image", preprocessedImg)
     cv2.waitKey()
 
     preprocessedImg = cv2.resize(preprocessedImg, (75, 75))
@@ -79,6 +82,7 @@ while uni_img:
 
 #for i in range(0, len(imgs)):
     print(predictions[0])
+    # if the probability of the tumor to exist is greater than the probability of not
     if predictions[0][0] < predictions[0][1]:
         print("yes")
     else:
